@@ -18,9 +18,7 @@ class StudyApplicationTests {
 
     @Test
     public void test1() throws Exception{
-//        poiService.test1();
-        poiService.test2();
-        poiService.test3();
+        poiService.test();
     }
 
 }

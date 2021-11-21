@@ -1,106 +1,164 @@
 package com.poi.study.service;
 
-import com.deepoove.poi.XWPFTemplate;
-import com.deepoove.poi.data.DocxRenderData;
-import com.deepoove.poi.xwpf.NiceXWPFDocument;
-import org.apache.poi.openxml4j.util.ZipSecureFile;
-import org.springframework.stereotype.Service;
 
-import java.io.File;
+import com.lowagie.text.Font;
+import com.lowagie.text.FontFactory;
+import com.lowagie.text.pdf.BaseFont;
+import fr.opensagres.poi.xwpf.converter.pdf.PdfOptions;
+import fr.opensagres.xdocreport.itext.extension.font.IFontProvider;
+import org.apache.poi.xwpf.usermodel.*;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.*;
+import org.springframework.stereotype.Service;
+import fr.opensagres.poi.xwpf.converter.pdf.PdfConverter;
+
+import java.awt.*;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.util.HashMap;
+import java.math.BigInteger;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class PoiService{
 
     private static long start = 0L;
 
-    public void test1() throws Exception{
-        start = System.currentTimeMillis();
-        List<Father> list = initData();
-        printTime("生产数据：");
-        File templateFile = new File("C:\\Users\\13015\\Desktop\\temp\\template.docx");
-        XWPFTemplate compile = XWPFTemplate.compile(templateFile);
-        printTime("编译模板：");
-        Map<String, Object> map = new HashMap<>();
-        map.put("father", list);
-        XWPFTemplate render = compile.render(map);
-        printTime("渲染数据：");
-//        render.writeToFile("C:\\Users\\13015\\Desktop\\temp\\result.docx");
-        printTime("写入数据：");
-    }
-//    生产数据：1ms
-//    合并数据：159314ms
-//    写入数据：1145ms
-//    生产数据：1ms
-//    合并数据：152995ms
-//    写入数据：1176ms
-    public void test2() throws Exception {
-        ZipSecureFile.setMinInflateRatio(0d);
-        System.out.println("-----------------------------------");
-        start = System.currentTimeMillis();
-        List<Father> list = initData();
-        printTime("生产数据：");
-        NiceXWPFDocument niceXWPFDocument = null;
-        List<NiceXWPFDocument> documentList = new LinkedList<>();
-        XWPFTemplate xwpfTemplate;
-        XWPFTemplate xwpfTemplate1 = XWPFTemplate.compile("C:\\Users\\13015\\Desktop\\temp\\template2.docx");
-        XWPFTemplate render = null;
-        DocxRenderData docxRenderData;
-        Map<String, Object> map = new HashMap<>();
-        int i = 0;
-        for (Father father : list) {
-            xwpfTemplate = XWPFTemplate.compile("C:\\Users\\13015\\Desktop\\temp\\template1.docx");
-            docxRenderData = new DocxRenderData(new File("C:\\Users\\13015\\Desktop\\temp\\template2.docx"), father.getChildren());
-            map.put("list", docxRenderData);
-            map.put("country", father.getCountry());
-            map.put("province", father.getProvince());
-            map.put("city", father.getCity());
-            render = xwpfTemplate.render(map);
-            if (niceXWPFDocument == null) {
-                niceXWPFDocument = render.getXWPFDocument();
-            } else {
-                documentList.add(render.getXWPFDocument());
-//                niceXWPFDocument = niceXWPFDocument.merge(render.getXWPFDocument());
-                render.close();
-            }
-//            printTime(father.getProvince() + i++);
+    public void test() throws Exception {
+        XWPFDocument xwpfDocument = new XWPFDocument();
+        XWPFStyles styles = xwpfDocument.createStyles();
+        CTStyles ctStyles = CTStyles.Factory.newInstance();
+        styles.setStyles(ctStyles);
+
+        CTBody body = xwpfDocument.getDocument().getBody();
+        CTSectPr ctSectPr = body.addNewSectPr();
+        ctSectPr.addNewPgSz();
+        CTPageSz pgSz = ctSectPr.getPgSz();
+        // 设置页面大小为A4纸
+        pgSz.setW(BigInteger.valueOf(11907));
+        pgSz.setH(BigInteger.valueOf(16840));
+        pgSz.setOrient(STPageOrientation.PORTRAIT);
+
+        if (!ctSectPr.isSetPgMar()) {
+            ctSectPr.addNewPgMar();
         }
-//        printTime("渲染数据：");
-//        niceXWPFDocument = niceXWPFDocument.merge(documentList, niceXWPFDocument.createParagraph().createRun());
-        printTime("合并数据：");
-        niceXWPFDocument.write(new FileOutputStream("C:\\Users\\13015\\Desktop\\temp\\result.docx"));
-        printTime("写入数据：");
+        // 设置页面边距
+        CTPageMar pgMar = ctSectPr.getPgMar();
+        pgMar.setLeft(BigInteger.valueOf(720L));
+        pgMar.setTop(BigInteger.valueOf(1440L));
+        pgMar.setRight(BigInteger.valueOf(720L));
+        pgMar.setBottom(BigInteger.valueOf(1440L));
+
+
+        XWPFTable table = xwpfDocument.createTable(4, 2);
+        table.getCTTbl().addNewTblGrid().addNewGridCol().setW(BigInteger.valueOf(8600 / 2));
+//        //other columns (2 in this case) also each 1 inches width
+        for (int col = 1; col < 2; col++) {
+            table.getCTTbl().getTblGrid().addNewGridCol().setW(BigInteger.valueOf(8600 / 2));
+        }
+        List<XWPFTableRow> rows = table.getRows();
+        for (int i = 0; i < rows.size(); i++) {
+            XWPFTableRow row = rows.get(i);
+            List<XWPFTableCell> tableCells = row.getTableCells();
+            for (int j = 0; j < tableCells.size(); j++) {
+                XWPFTableCell cell = tableCells.get(j);
+                CTTcPr ctTcPr = cell.getCTTc().addNewTcPr();
+                if (i == 0 || i == 2) {
+//                    if (ctTcPr.getGridSpan() == null) {
+//                        CTDecimalNumber ctDecimalNumber = CTDecimalNumber.Factory.newInstance();
+//                        ctDecimalNumber.setVal(BigInteger.valueOf(1));
+//                        ctTcPr.setGridSpan(ctDecimalNumber);
+//                    } else {
+//                        ctTcPr.getGridSpan().setVal(BigInteger.valueOf(1));
+//                    }
+                    continue;
+                }
+                if (j == 0) {
+                    CTDecimalNumber ctDecimalNumber = ctTcPr.getGridSpan();
+                    if (!ctTcPr.isSetGridSpan()) {
+                        ctDecimalNumber = CTDecimalNumber.Factory.newInstance();
+                    }
+                    ctDecimalNumber.setVal(BigInteger.valueOf(2));
+                    ctTcPr.setGridSpan(ctDecimalNumber);
+                    XWPFParagraph xwpfParagraph = cell.getParagraphs().get(0);
+                    XWPFRun run = xwpfParagraph.createRun();
+                    run.setText("asdsadasd");
+                    run.setFontFamily("黑体");
+                } else {
+                    // 移除调没有的列
+//                    ctDecimalNumber.setVal(BigInteger.valueOf(0));
+//                    ctTcPr.setGridSpan(ctDecimalNumber);
+                    row.getCtRow().removeTc(j);
+                    row.removeCell(j);
+                }
+            }
+        }
+
+        FileOutputStream fos = new FileOutputStream("/opt/astp/data/report/generate/a.docx");
+        xwpfDocument.write(fos);
+
+        FileOutputStream fos1 = new FileOutputStream("/opt/astp/data/report/generate/a.pdf");
+
+        PdfOptions pdfOptions = PdfOptions.create();
+
+        pdfOptions.fontProvider(new IFontProvider() {
+            @Override
+            public Font getFont(String s, String s1, float v, int i, Color color) {
+                try {
+                    if (s.equalsIgnoreCase("宋体") || s.equalsIgnoreCase("微软雅黑")) {
+                        BaseFont baseFont =
+                                BaseFont.createFont("/opt/astp/data/report/font/SIMSUN.TTC,0", s1, true);
+                        return new Font(baseFont, v, i, color);
+                    }
+                    if (s.equalsIgnoreCase("黑体")) {
+                        BaseFont baseFont =
+                                BaseFont.createFont("/opt/astp/data/report/font/SIMHEI.TTF", s1, true);
+                        return new Font(baseFont, v, i, color);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                if (s == null) {
+                    s = "DengXian";
+                }
+                return FontFactory.getFont(s, s1, v, i, color);
+            }
+        });
+        PdfConverter.getInstance().convert(xwpfDocument, fos1, pdfOptions);
     }
 
-    public void test3() throws Exception{
-        start = System.currentTimeMillis();
-        ZipSecureFile.setMinInflateRatio(0d);
-        List<Father> list = initData();
-        printTime("生产数据：");
-        NiceXWPFDocument niceXWPFDocument = null;
-        List<NiceXWPFDocument> documentList = new LinkedList<>();
-        XWPFTemplate xwpfTemplate;
-        for (Father father : list) {
-            xwpfTemplate = XWPFTemplate.compile("C:\\Users\\13015\\Desktop\\temp\\template.docx");
-            XWPFTemplate render = xwpfTemplate.render(father);
-            if (niceXWPFDocument == null) {
-                niceXWPFDocument = render.getXWPFDocument();
-            } else {
-//                niceXWPFDocument = niceXWPFDocument.merge(render.getXWPFDocument());
-                documentList.add(render.getXWPFDocument());
-                render.close();
+    public void test2() throws Exception{
+        XWPFDocument xwpfDocument = new XWPFDocument(new FileInputStream("/opt/astp/data/report/generate/aa.docx"));
+
+        FileOutputStream fos1 = new FileOutputStream("/opt/astp/data/report/generate/aa.pdf");
+
+        PdfOptions pdfOptions = PdfOptions.create();
+
+        pdfOptions.fontProvider(new IFontProvider() {
+            @Override
+            public Font getFont(String s, String s1, float v, int i, Color color) {
+                try {
+                    if (s.equalsIgnoreCase("宋体") || s.equalsIgnoreCase("微软雅黑")) {
+                        BaseFont baseFont =
+                                BaseFont.createFont("/opt/astp/data/report/font/SIMSUN.TTC,0", s1, true);
+                        return new Font(baseFont, v, i, color);
+                    }
+                    if (s.equalsIgnoreCase("黑体")) {
+                        BaseFont baseFont =
+                                BaseFont.createFont("/opt/astp/data/report/font/SIMHEI.TTF", s1, true);
+                        return new Font(baseFont, v, i, color);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                if (s == null) {
+                    s = "DengXian";
+                }
+                return FontFactory.getFont(s, s1, v, i, color);
             }
-        }
-//        printTime("渲染数据：");
-        niceXWPFDocument = niceXWPFDocument.merge(documentList, niceXWPFDocument.createParagraph().createRun());
-        printTime("合并数据：");
-        niceXWPFDocument.write(new FileOutputStream("C:\\Users\\13015\\Desktop\\temp\\result.docx"));
-        printTime("写入数据：");
+        });
+        PdfConverter.getInstance().convert(xwpfDocument, fos1, pdfOptions);
     }
+
 
     private List<Father> initData() {
         List<Father> list = new LinkedList<>();
@@ -145,16 +203,5 @@ public class PoiService{
     }
 
 
-    public static void main(String[] args) {
-        long start = System.currentTimeMillis();
-        XWPFTemplate xwpfTemplate;
-        File file = new File("C:\\Users\\13015\\Desktop\\temp\\template1.docx");
-        for (int i = 0; i < 10000; i++) {
-            xwpfTemplate = XWPFTemplate.compile(file);
-        }
-        long end = System.currentTimeMillis();
-        System.out.println((end - start) + "ms");
-    }
-    //21990ms
 
 }
